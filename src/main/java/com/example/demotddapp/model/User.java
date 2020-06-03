@@ -1,8 +1,6 @@
 package com.example.demotddapp.model;
 
 import com.example.demotddapp.utils.annotation.UniqueUsername;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonView;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
