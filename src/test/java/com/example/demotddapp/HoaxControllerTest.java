@@ -29,6 +29,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
 import javax.transaction.Transactional;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -329,11 +330,270 @@ public class HoaxControllerTest {
         assertThat(responseEntity.getBody().getTotalElements()).isEqualTo(5);
     }
 
+    @Test
+    public void test_getOldHoaxes_whereThereIsNoHoaxes_receiveOk() {
+        ResponseEntity<Object> responseEntity = getOldHoaxes(5, new ParameterizedTypeReference<Object>() {
+        });
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    public void test_getOldHoaxes_whereThereIsNoHoaxes_receivePageWithItemsProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<TestPage<Object>> responseEntity = getOldHoaxes(fourth.getId(), new ParameterizedTypeReference<TestPage<Object>>() {
+        });
+
+        assertThat(responseEntity.getBody().getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    public void test_getOldHoaxes_whereThereIsNoHoaxes_receivePageWithHoaxVmItemsBeforeProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<TestPage<HoaxVm>> responseEntity = getOldHoaxes(fourth.getId(), new ParameterizedTypeReference<TestPage<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().getContent().get(0).getDate()).isGreaterThan(0);
+    }
+
+    @Test
+    public void test_getOldHoaxesOfUser_whenUserExistThereAreNoHoaxes_receiveOk() {
+        userService.save(TestUtils.createUser("user1"));
+        ResponseEntity<Object> responseEntity = getOldHoaxesOfUser(5, "user1", new ParameterizedTypeReference<Object>() {
+        });
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+
+    @Test
+    public void test_getOldHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receivePageWithItemsProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<TestPage<Object>> responseEntity = getOldHoaxesOfUser(fourth.getId(), "user1", new ParameterizedTypeReference<TestPage<Object>>() {
+        });
+
+        assertThat(responseEntity.getBody().getTotalElements()).isEqualTo(3);
+    }
+
+
+    @Test
+    public void test_getOldHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receivePageWithHoaxVmItemsBeforeProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<TestPage<HoaxVm>> responseEntity = getOldHoaxesOfUser(fourth.getId(), "user1", new ParameterizedTypeReference<TestPage<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().getContent().get(0).getDate()).isGreaterThan(0);
+    }
+
+    @Test
+    public void test_getOldHoaxesOfUser_whenUserExistThereAreNoHoaxes_receiveNotFound() {
+        ResponseEntity<Object> responseEntity = getOldHoaxesOfUser(5, "unknown-user", new ParameterizedTypeReference<Object>() {
+        });
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    public void test_getOldHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receivePageWithZeroItemsBeforeProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        userService.save(TestUtils.createUser("user2"));
+
+        ResponseEntity<TestPage<HoaxVm>> responseEntity = getOldHoaxesOfUser(fourth.getId(), "user2", new ParameterizedTypeReference<TestPage<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().getTotalElements()).isEqualTo(0);
+    }
+
+    @Test
+    public void test_getNewHoaxes_whenThereAreNoHoaxes_receiveListOfItemsAfterProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<List<Object>> responseEntity = getNewHoaxes(fourth.getId(), new ParameterizedTypeReference<List<Object>>() {
+        });
+
+        assertThat(responseEntity.getBody().size()).isEqualTo(1);
+    }
+
+    @Test
+    public void test_getNewHoaxes_whenThereAreNoHoaxes_receiveListOfHoaxVmAfterProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<List<HoaxVm>> responseEntity = getNewHoaxes(fourth.getId(), new ParameterizedTypeReference<List<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().get(0).getDate()).isGreaterThan(0);
+    }
+
+    @Test
+    public void test_getNewHoaxesOfUser_whenUserExistThereAreNoHoaxes_receiveOk() {
+        userService.save(TestUtils.createUser("user1"));
+        ResponseEntity<Object> responseEntity = getNewHoaxesOfUser(5, "user1", new ParameterizedTypeReference<Object>() {
+        });
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    public void test_getNewHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receiveListOfItemsAfterProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<List<Object>> responseEntity = getNewHoaxesOfUser(fourth.getId(), "user1", new ParameterizedTypeReference<List<Object>>() {
+        });
+
+        assertThat(responseEntity.getBody().size()).isEqualTo(1);
+    }
+
+    @Test
+    public void test_getNewHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receiveListWithHoaxVmItemsBeforeProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<List<HoaxVm>> responseEntity = getNewHoaxesOfUser(fourth.getId(), "user1", new ParameterizedTypeReference<List<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().get(0).getDate()).isGreaterThan(0);
+    }
+
+    @Test
+    public void test_getNewHoaxesOfUser_whenUserExistThereAreNoHoaxes_receiveNotFound() {
+        ResponseEntity<Object> responseEntity = getNewHoaxesOfUser(5, "unknown-user", new ParameterizedTypeReference<Object>() {
+        });
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    public void test_getNewHoaxesOfUser_whenUserExistAndThereAreNoHoaxes_receiveListWithZeroItemsBeforeProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        userService.save(TestUtils.createUser("user2"));
+
+        ResponseEntity<List<HoaxVm>> responseEntity = getNewHoaxesOfUser(fourth.getId(), "user2", new ParameterizedTypeReference<List<HoaxVm>>() {
+        });
+
+        assertThat(responseEntity.getBody().size()).isEqualTo(0);
+    }
+
+
+    @Test
+    public void test_getNewHoaxCount_whenThereAreNoHoaxes_receiveCountAfterProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<Map<String, Long>> responseEntity = getNewHoaxCount(fourth.getId(), new ParameterizedTypeReference<Map<String, Long>>() {
+        });
+
+        assertThat(responseEntity.getBody().get("count")).isEqualTo(1);
+    }
+
+    @Test
+    public void test_getNewHoaxCountOfUser_whenThereAreNoHoaxes_receiveCountAfterProvidedId() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+        Hoax fourth = hoaxService.save(TestUtils.createHoax(), user);
+        hoaxService.save(TestUtils.createHoax(), user);
+
+        ResponseEntity<Map<String, Long>> responseEntity = getNewHoaxCountOfUser(fourth.getId(), "user1", new ParameterizedTypeReference<Map<String, Long>>() {
+        });
+
+        assertThat(responseEntity.getBody().get("count")).isEqualTo(1);
+    }
+
+
     private void authenticate(String username) {
         testRestTemplate.getRestTemplate()
                 .getInterceptors().add(new BasicAuthenticationInterceptor(username, "P5ssword"));
     }
 
+    private <T> ResponseEntity<T> getNewHoaxes(long hoaxId, ParameterizedTypeReference<T> responseType) {
+        String path = API_V_1_HOAXES + "/" + hoaxId + "?direction=after&sort=id,desc";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
+
+    private <T> ResponseEntity<T> getOldHoaxes(long hoaxId, ParameterizedTypeReference<T> responseType) {
+        String path = API_V_1_HOAXES + "/" + hoaxId + "?direction=before&page=0&size=5&sort=id,desc";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
+
+    private <T> ResponseEntity<T> getOldHoaxesOfUser(long hoaxId, String username, ParameterizedTypeReference<T> responseType) {
+        String path = "/api/v1/users/" + username + "/hoaxes/" + hoaxId + "?direction=before&page=0&size=5&sort=id,desc";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
+
+    private <T> ResponseEntity<T> getNewHoaxesOfUser(long hoaxId, String username, ParameterizedTypeReference<T> responseType) {
+        String path = "/api/v1/users/" + username + "/hoaxes/" + hoaxId + "?direction=after&sort=id,desc";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
+
+    private <T> ResponseEntity<T> getNewHoaxCount(long hoaxId, ParameterizedTypeReference<T> responseType) {
+        String path = API_V_1_HOAXES + "/" + hoaxId + "?direction=after&count=true";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
+
+    private <T> ResponseEntity<T> getNewHoaxCountOfUser(long hoaxId, String username, ParameterizedTypeReference<T> responseType) {
+        String path = "/api/v1/users/" + username + "/hoaxes/" + hoaxId + "?direction=after&count=true";
+        return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
+    }
 
     private <T> ResponseEntity<T> getHoaxes(ParameterizedTypeReference<T> responseType) {
         return testRestTemplate.exchange(API_V_1_HOAXES, HttpMethod.GET, null, responseType);
