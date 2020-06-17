@@ -10,6 +10,7 @@ import com.example.demotddapp.repository.UserRepository;
 import com.example.demotddapp.service.FileService;
 import com.example.demotddapp.service.HoaxService;
 import com.example.demotddapp.service.UserService;
+import com.example.demotddapp.shared.GenericResponse;
 import com.example.demotddapp.shared.error.ApiError;
 import com.example.demotddapp.utils.TestPage;
 import com.example.demotddapp.utils.TestUtils;
@@ -41,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -631,6 +633,67 @@ public class HoaxControllerTest {
         assertThat(responseEntity.getBody().get("count")).isEqualTo(1);
     }
 
+    @Test
+    public void test_deleteHoax_whenUserIsUnauth_receiveUnauth() {
+        ResponseEntity<Object> responseEntity = deleteHoax(555l, Object.class);
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    public void test_deleteHoax_whenUserIsAuth_receiveOk() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+        Hoax hoax = hoaxService.save(TestUtils.createHoax(), user);
+        ResponseEntity<Object> responseEntity = deleteHoax(hoax.getId(), Object.class);
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    public void test_deleteHoax_whenUserIsAuth_receiveGenericResponse() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+        Hoax hoax = hoaxService.save(TestUtils.createHoax(), user);
+        ResponseEntity<GenericResponse> responseEntity = deleteHoax(hoax.getId(), GenericResponse.class);
+
+        assertThat(responseEntity.getBody().getMessage()).isNotNull();
+    }
+
+    @Test
+    public void test_deleteHoax_whenUserIsAuth_hoaxRemoveFromDb() {
+        User user = userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+        Hoax hoax = hoaxService.save(TestUtils.createHoax(), user);
+
+        deleteHoax(hoax.getId(), GenericResponse.class);
+        Optional<Hoax> inDb = hoaxRepository.findById(hoax.getId());
+
+        assertThat(inDb.isPresent()).isFalse();
+    }
+
+    @Test
+    public void test_deleteHoax_whenHoaxIsOwnedByAnotherUser_receiveForbidden() {
+        userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+        User hoaxOwner = userService.save(TestUtils.createUser("hoax-owner"));
+        Hoax hoax = hoaxService.save(TestUtils.createHoax(), hoaxOwner);
+
+        ResponseEntity<Object> responseEntity = deleteHoax(hoax.getId(), Object.class);
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    public void test_deleteHoax_whenHoaxNotExist_receiveForbidden() {
+        userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+
+        ResponseEntity<Object> responseEntity = deleteHoax(555l, Object.class);
+
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
 
     private void authenticate(String username) {
         testRestTemplate.getRestTemplate()
@@ -679,6 +742,11 @@ public class HoaxControllerTest {
     private <T> ResponseEntity<T> postHoax(Hoax hoax, Class<T> responseType) {
         return testRestTemplate.postForEntity(API_V_1_HOAXES, hoax, responseType);
     }
+
+    private <T> ResponseEntity<T> deleteHoax(long hoaxId, Class<T> responseType) {
+        return testRestTemplate.exchange(API_V_1_HOAXES + "/" + hoaxId, HttpMethod.DELETE, null, responseType);
+    }
+
 
     private MultipartFile createFile() throws IOException {
         ClassPathResource imageResource = new ClassPathResource("test-png.png");

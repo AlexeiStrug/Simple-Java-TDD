@@ -141,4 +141,7 @@ public class HoaxService {
         };
     }
 
+    public void deleteHoax(long id) {
+        hoaxRepository.deleteById(id);
+    }
 }

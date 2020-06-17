@@ -4,11 +4,13 @@ import com.example.demotddapp.model.Hoax;
 import com.example.demotddapp.model.User;
 import com.example.demotddapp.model.dto.HoaxVm;
 import com.example.demotddapp.service.HoaxService;
+import com.example.demotddapp.shared.GenericResponse;
 import com.example.demotddapp.utils.annotation.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +46,7 @@ public class HoaxController {
                                         Pageable pageable,
                                         @PathVariable(required = false) String username,
                                         @RequestParam(name = "direction", defaultValue = "after") String direction,
-                                        @RequestParam(name ="count", defaultValue = "false") boolean count) {
+                                        @RequestParam(name = "count", defaultValue = "false") boolean count) {
         if (!direction.equalsIgnoreCase("after")) {
             return ResponseEntity.ok(hoaxService.getOldHoaxes(id, username, pageable).map(HoaxVm::new));
         }
@@ -57,6 +59,13 @@ public class HoaxController {
                 .map(HoaxVm::new)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(newHoaxes);
+    }
+
+    @DeleteMapping("/hoaxes/{id:[0-9]+}")
+    @PreAuthorize("@hoaxSecurityService.isAllowedToDelete(#id, principal)")
+    GenericResponse deleteHoax(@PathVariable long id) {
+        hoaxService.deleteHoax(id);
+        return new GenericResponse("Hoax is removed");
     }
 
 //    @GetMapping("/users/{username}/hoaxes/{id:[0-9]+}")
