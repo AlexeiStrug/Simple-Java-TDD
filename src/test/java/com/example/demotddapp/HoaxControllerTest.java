@@ -1,15 +1,20 @@
 package com.example.demotddapp;
 
+import com.example.demotddapp.model.FileAttachment;
 import com.example.demotddapp.model.Hoax;
 import com.example.demotddapp.model.User;
 import com.example.demotddapp.model.dto.HoaxVm;
+import com.example.demotddapp.repository.FileAttachmentRepository;
 import com.example.demotddapp.repository.HoaxRepository;
 import com.example.demotddapp.repository.UserRepository;
+import com.example.demotddapp.service.FileService;
 import com.example.demotddapp.service.HoaxService;
 import com.example.demotddapp.service.UserService;
 import com.example.demotddapp.shared.error.ApiError;
 import com.example.demotddapp.utils.TestPage;
 import com.example.demotddapp.utils.TestUtils;
+import com.example.demotddapp.utils.configuration.AppConfiguration;
+import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,32 +22,37 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.support.BasicAuthenticationInterceptor;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.transaction.TestTransaction;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
 import javax.transaction.Transactional;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.in;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public class HoaxControllerTest {
 
-    public static final String API_V_1_HOAXES = "/api/v1/hoaxes";
+    private static final String API_V_1_HOAXES = "/api/v1/hoaxes";
+
     @Autowired
     TestRestTemplate testRestTemplate;
 
@@ -53,19 +63,30 @@ public class HoaxControllerTest {
     HoaxService hoaxService;
 
     @Autowired
+    FileService fileService;
+
+    @Autowired
     UserRepository userRepository;
 
     @Autowired
     HoaxRepository hoaxRepository;
 
+    @Autowired
+    FileAttachmentRepository fileAttachmentRepository;
+
+    @Autowired
+    AppConfiguration appConfiguration;
+
     @PersistenceUnit
     private EntityManagerFactory entityManagerFactory;
 
     @Before
-    public void cleanup() {
+    public void cleanup() throws IOException {
         hoaxRepository.deleteAll();
         userRepository.deleteAll();
+        fileAttachmentRepository.deleteAll();
         testRestTemplate.getRestTemplate().getInterceptors().clear();
+        FileUtils.cleanDirectory(new File(appConfiguration.getFullAttachmentsPath()));
     }
 
     @Test
@@ -86,6 +107,55 @@ public class HoaxControllerTest {
         ResponseEntity<HoaxVm> responseEntity = postHoax(hoax, HoaxVm.class);
 
         assertThat(responseEntity.getBody().getUser().getUsername()).isEqualTo("user1");
+    }
+
+    @Test
+    public void test_postHoax_whenHoaxHasFileAttachmentAndUserIsAuth_fileAttachmentHoaxRelationIsUpdateInDb() throws IOException {
+        userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+
+        MultipartFile file = createFile();
+        FileAttachment savedFile = fileService.saveAttachment(file);
+
+        Hoax hoax = TestUtils.createHoax();
+        hoax.setFileAttachment(savedFile);
+        ResponseEntity<HoaxVm> responseEntity = postHoax(hoax, HoaxVm.class);
+
+        FileAttachment inDb = fileAttachmentRepository.findAll().get(0);
+
+        assertThat(inDb.getHoax().getId()).isEqualTo(responseEntity.getBody().getId());
+    }
+
+    @Test
+    public void test_postHoax_whenHoaxHasFileAttachmentAndUserIsAuth_hoaxFileAttachmentRelationIsUpdateInDb() throws IOException {
+        userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+
+        MultipartFile file = createFile();
+        FileAttachment savedFile = fileService.saveAttachment(file);
+
+        Hoax hoax = TestUtils.createHoax();
+        hoax.setFileAttachment(savedFile);
+        ResponseEntity<HoaxVm> responseEntity = postHoax(hoax, HoaxVm.class);
+
+        Hoax inDb = hoaxRepository.findById(responseEntity.getBody().getId()).get();
+
+        assertThat(inDb.getFileAttachment().getId()).isEqualTo(savedFile.getId());
+    }
+
+    @Test
+    public void test_postHoax_whenHoaxHasFileAttachmentAndUserIsAuth_receiveHoaxVmWithAttachment() throws IOException {
+        userService.save(TestUtils.createUser("user1"));
+        authenticate("user1");
+
+        MultipartFile file = createFile();
+        FileAttachment savedFile = fileService.saveAttachment(file);
+
+        Hoax hoax = TestUtils.createHoax();
+        hoax.setFileAttachment(savedFile);
+        ResponseEntity<HoaxVm> responseEntity = postHoax(hoax, HoaxVm.class);
+
+        assertThat(responseEntity.getBody().getFileAttachmentVm().getName()).isEqualTo(savedFile.getName());
     }
 
     @Test
@@ -262,6 +332,7 @@ public class HoaxControllerTest {
         assertThat(storedHoax.getUser().getUsername()).isEqualTo("user1");
     }
 
+
     @Test
     public void test_getHoaxesOfUser_whenUserExist_receiveOK() {
         User user = userService.save(TestUtils.createUser("user1"));
@@ -299,6 +370,7 @@ public class HoaxControllerTest {
 
         assertThat(storedHoaxVm.getUser().getUsername()).isEqualTo("user1");
     }
+
 
     @Test
     public void test_getHoaxesOfUser_whenUserExistWithMultipleHoaxes_receivePageWithMatchingHoaxesCount() {
@@ -604,9 +676,15 @@ public class HoaxControllerTest {
         return testRestTemplate.exchange(path, HttpMethod.GET, null, responseType);
     }
 
-
     private <T> ResponseEntity<T> postHoax(Hoax hoax, Class<T> responseType) {
         return testRestTemplate.postForEntity(API_V_1_HOAXES, hoax, responseType);
+    }
+
+    private MultipartFile createFile() throws IOException {
+        ClassPathResource imageResource = new ClassPathResource("test-png.png");
+        byte[] fileAsByte = FileUtils.readFileToByteArray(imageResource.getFile());
+
+        return new MockMultipartFile("test-png.png", fileAsByte);
     }
 
 }

@@ -1,7 +1,9 @@
 package com.example.demotddapp.service;
 
+import com.example.demotddapp.model.FileAttachment;
 import com.example.demotddapp.model.Hoax;
 import com.example.demotddapp.model.User;
+import com.example.demotddapp.repository.FileAttachmentRepository;
 import com.example.demotddapp.repository.HoaxRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,15 +18,24 @@ public class HoaxService {
 
     HoaxRepository hoaxRepository;
     UserService userService;
+    FileAttachmentRepository fileAttachmentRepository;
 
-    public HoaxService(HoaxRepository hoaxRepository, UserService userService) {
+    public HoaxService(HoaxRepository hoaxRepository,
+                       UserService userService,
+                       FileAttachmentRepository fileAttachmentRepository) {
         this.hoaxRepository = hoaxRepository;
         this.userService = userService;
+        this.fileAttachmentRepository = fileAttachmentRepository;
     }
 
     public Hoax save(Hoax hoax, User user) {
         hoax.setTimestamp(new Date());
         hoax.setUser(user);
+        if (hoax.getFileAttachment() != null) {
+            FileAttachment inDb = fileAttachmentRepository.findById(hoax.getFileAttachment().getId()).get();
+            inDb.setHoax(hoax);
+            hoax.setFileAttachment(inDb);
+        }
         return hoaxRepository.save(hoax);
     }
 
