@@ -1,7 +1,8 @@
-package com.example.demotddapp.utils.annotation;
+package com.example.demotddapp.utils.validators;
 
 import com.example.demotddapp.model.User;
 import com.example.demotddapp.repository.UserRepository;
+import com.example.demotddapp.utils.annotation.UniqueUsername;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.validation.ConstraintValidator;

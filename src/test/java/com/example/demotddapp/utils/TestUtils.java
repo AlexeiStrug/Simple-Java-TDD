@@ -1,5 +1,6 @@
 package com.example.demotddapp.utils;
 
+import com.example.demotddapp.model.Hoax;
 import com.example.demotddapp.model.User;
 
 public class TestUtils {
@@ -14,8 +15,14 @@ public class TestUtils {
     }
 
     public static User createUser(String username) {
-        User user = new User();
+        User user = createUser();
         user.setUsername(username);
         return user;
+    }
+
+    public static Hoax createHoax() {
+        Hoax hoax = new Hoax();
+        hoax.setContent("test content for test hoax");
+        return hoax;
     }
 }

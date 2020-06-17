@@ -1,6 +1,6 @@
 package com.example.demotddapp.utils.annotation;
 
-import com.example.demotddapp.utils.validators.UniqueUsernameValidator;
+import com.example.demotddapp.utils.validators.ProfileImageValidator;
 
 import javax.validation.Constraint;
 import javax.validation.Payload;
@@ -9,12 +9,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Constraint(validatedBy = UniqueUsernameValidator.class)
+@Constraint(validatedBy = ProfileImageValidator.class)
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface UniqueUsername {
+public @interface ProfileImage {
 
-    String message() default "{constraints.username.UniqueUsername}";
+    String message() default "{constraints.image.ProfileImage.message}";
 
     Class<?>[] groups() default {};
 
